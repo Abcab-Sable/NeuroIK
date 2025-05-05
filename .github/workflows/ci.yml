@@ -1,1 +1,71 @@
+name: CI
 
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  python:
+    name: Python CI
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov flake8 codecov
+
+      - name: Lint Python code
+        run: flake8 .
+
+      - name: Run Python tests
+        run: pytest --cov=NeuroIK tests/
+
+      - name: Upload Python coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  julia:
+    name: Julia CI
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        julia-version: ["1.8", "1.11"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Julia ${{ matrix.julia-version }}
+        uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.julia-version }}
+
+      - name: Install Julia dependencies
+        run: |
+          julia -e 'using Pkg; Pkg.instantiate()'
+          julia -e 'using Pkg; Pkg.add("Coverage")'
+
+      - name: Run Julia tests
+        run: julia --project -e 'using Pkg; Pkg.test()'
+
+      - name: Upload Julia coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
